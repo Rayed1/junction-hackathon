@@ -1,0 +1,660 @@
+{
+  "name": "Aimo Shortage Risk Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "aimo-shortage-risk",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -240,
+        -64
+      ],
+      "id": "0e9f5980-dd69-43b5-9105-260f38e74785",
+      "name": "Webhook",
+      "webhookId": "2551406b-5d02-4888-a4dd-8d49767ce0c3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d6a7a4fd-de4f-4e44-93c2-6f2e5cc67266",
+              "name": "order_number",
+              "value": "={{ Number($json.orderNumber ?? $json.body?.orderNumber ?? 0) }}\n",
+              "type": "number"
+            },
+            {
+              "id": "d33e8eb7-40ef-485b-815d-6f9ca2bfe7f4",
+              "name": "product_code",
+              "value": "={{ Number($json.productCode ?? $json.body?.productCode ?? 0) }}\n",
+              "type": "number"
+            },
+            {
+              "id": "7d509995-766b-4c3f-bac3-ca1769e40e85",
+              "name": "customer_number",
+              "value": "={{ Number($json.customerNumber ?? $json.body?.customerNumber ?? 0) }}\n",
+              "type": "number"
+            },
+            {
+              "id": "87749f9e-5bb1-43d2-abb1-7abd5b2d49b4",
+              "name": "order_qty",
+              "value": "={{ Number($json.orderQty ?? $json.body?.orderQty ?? 0) }}\n",
+              "type": "number"
+            },
+            {
+              "id": "d8dce44f-78a5-4a5b-b192-453aee51d28f",
+              "name": "customerEmail",
+              "value": "={{ ($json.body?.customerEmail ?? $json.customerEmail ?? '').trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -32,
+        -64
+      ],
+      "id": "98b74043-579c-4a9f-bd03-5dbef98b0e59",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1PnnQFas_YIDMe-_e2vGFmIrmB4d3bBfFTvCgToyI9Jg",
+          "mode": "list",
+          "cachedResultName": "Dataset",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PnnQFas_YIDMe-_e2vGFmIrmB4d3bBfFTvCgToyI9Jg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1187376821,
+          "mode": "list",
+          "cachedResultName": "dispatcher_action_items",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PnnQFas_YIDMe-_e2vGFmIrmB4d3bBfFTvCgToyI9Jg/edit#gid=1187376821"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "customer_number",
+              "lookupValue": "={{ String($json.customer_number) }}"
+            },
+            {
+              "lookupColumn": "product_code",
+              "lookupValue": "={{ String($json.product_code) }}"
+            },
+            {
+              "lookupColumn": "order_number",
+              "lookupValue": "={{ $json.order_number }}"
+            },
+            {
+              "lookupColumn": "order_qty",
+              "lookupValue": "={{ $json.order_qty }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        144,
+        -64
+      ],
+      "id": "fe780c17-48b6-44d1-aef0-81d54e893fb7",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KqHCS41TOKr4Au5c",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Order details:\n- Order number: {{ $item(0).$node[\"Edit Fields\"].json.order_number }}\n- Product code: {{ $item(0).$node[\"Edit Fields\"].json.product_code }}\n- Customer number: {{ $item(0).$node[\"Edit Fields\"].json.customer_number }}\n- Order quantity: {{ $item(0).$node[\"Edit Fields\"].json.order_qty }}\n\nDataset info:\n- Risk level: {{ $json.risk_level }}\n- Shortage probability (0–1): {{ $json.shortage_probability }}\n\nTask:\nWrite a short, friendly message that we can send to the customer explaining:\n- the current shortage risk and risk level,\n- that there may be a delay,\n- and what we recommend (e.g. accept delay, reduce quantity, choose alternative product, or contact support).\n\nConstraints:\n- 2–3 sentences.\n- Don't mention that you are an AI or that this comes from a dataset.\n",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a supply-chain assistant for Valio Aimo. You write clear, polite messages for business customers about stock shortage risks.\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        544,
+        -64
+      ],
+      "id": "bbb8e4de-7346-444d-b47f-b103e1ebf7a5",
+      "name": "Generate Recommendation"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        544,
+        144
+      ],
+      "id": "ae51ae0c-9209-4ada-a602-84774201934e",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "6NcofbzzwMlNUkgo",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ee89d393-b19a-4662-afd5-4f02a2b6cc0b",
+              "name": "customerNumber",
+              "value": "={{ $item(0).$node[\"Edit Fields\"].json.customer_number }}\n",
+              "type": "number"
+            },
+            {
+              "id": "f719ed06-6652-4ffc-984d-2e07090f69da",
+              "name": "orderQty",
+              "value": "={{ $item(0).$node[\"Edit Fields\"].json.order_qty }}\n",
+              "type": "number"
+            },
+            {
+              "id": "460aa64d-ced1-4b36-a9c8-4a016dae7ee9",
+              "name": "riskLevel",
+              "value": "={{ $item(0).$node[\"Get row(s) in sheet\"].json.risk_level }}\n",
+              "type": "string"
+            },
+            {
+              "id": "76f597d4-1193-4589-b883-cb335ce6c3dc",
+              "name": "shortageProbability",
+              "value": "={{ $item(0).$node[\"Get row(s) in sheet\"].json.shortage_probability }}\n",
+              "type": "number"
+            },
+            {
+              "id": "ff683fdf-b8c6-487e-80eb-49214e05d470",
+              "name": "recommendedAction",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "4d3270af-dea5-4f78-8d12-545c13d1ab2e",
+              "name": "customerEmail",
+              "value": "={{ $node[\"Edit Fields\"].json.customerEmail.trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        -64
+      ],
+      "id": "f10e7b9f-dc15-4f0a-a2c2-fcdec4ac8844",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $node[\"Edit Fields\"].json.customerEmail.trim() }}",
+        "subject": "=Valio Aimo Order Stats: {{ $json.riskLevel }} shortage risk for order {{ $item(0).$node[\"Edit Fields\"].json.order_number }}\n",
+        "message": "=Dear customer,<br><br>\nHere is an update on your order:<br><br>\n<b>Order number:</b> {{ $item(0).$node[\"Edit Fields\"].json.order_number }}<br>\n<b>Product code:</b> {{ $item(0).$node[\"Edit Fields\"].json.product_code }}<br>\n<b>Quantity:</b> {{ $json.orderQty }}<br><br>\n\n<b>Shortage risk level:</b> {{ $json.riskLevel }}<br>\n<b>Shortage probability:</b> {{ ($json.shortageProbability * 100).toFixed(2) }}%<br><br>\n\n<b>Recommended action:</b><br>\n{{ $json.recommendedAction }}<br><br>\n\nBest regards,<br>\nValio Aimo Support<br>\n(eshmamrayed11@gmail.com)\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        -64
+      ],
+      "id": "b52ab496-ca54-400c-ae15-c677a20c982b",
+      "name": "Send a message",
+      "webhookId": "06ce0ee9-deba-443a-8cb1-a3332eb4b8a1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "wjxdmxfK055RJTlJ",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4ba0d644-0579-4549-baa1-7b2fc84a423c",
+              "name": "order_number",
+              "value": "={{ $item(0).$node[\"Edit Fields\"].json.order_number }}",
+              "type": "number"
+            },
+            {
+              "id": "cc97447b-33a0-49d1-9b3e-5155cfee3bae",
+              "name": "product_code",
+              "value": "={{ $item(0).$node[\"Edit Fields\"].json.product_code }}",
+              "type": "number"
+            },
+            {
+              "id": "24efa778-3ad9-4d65-8c36-7e8f650ed6b0",
+              "name": "customer_number",
+              "value": "={{ $item(0).$node[\"Edit Fields\"].json.customer_number }}",
+              "type": "number"
+            },
+            {
+              "id": "c5d3bf7a-3aff-4e74-8760-4cdc5eab5847",
+              "name": "order_qty",
+              "value": "={{ $item(0).$node[\"Edit Fields\"].json.order_qty }}",
+              "type": "number"
+            },
+            {
+              "id": "8272d131-34ae-4f26-893b-e027901fea22",
+              "name": "risk_level",
+              "value": "={{ $item(0).$node[\"Get row(s) in sheet\"].json.risk_level }}",
+              "type": "string"
+            },
+            {
+              "id": "9a1fb319-f17e-49b3-9ed7-6cfb51b1fc6a",
+              "name": "shortage_probability",
+              "value": "={{ $item(0).$node[\"Get row(s) in sheet\"].json.shortage_probability }}",
+              "type": "number"
+            },
+            {
+              "id": "f3c5a79a-b3d1-43f0-be84-bad5a51df63f",
+              "name": "recommended_action",
+              "value": "={{ $item(0).$node[\"Edit Fields1\"].json.recommendedAction }}",
+              "type": "string"
+            },
+            {
+              "id": "d178b647-21d2-4330-860c-164b81e959b7",
+              "name": "Email",
+              "value": "={{ $node[\"Edit Fields\"].json.customerEmail.trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1264,
+        -64
+      ],
+      "id": "ed17e60c-26c9-49ab-85f1-75fd22ba07a7",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1H4zi45oKTTPTI1zvvfVs-20FprcTMBdVzn5aAHsX5_E",
+          "mode": "list",
+          "cachedResultName": "aimo_shortage_log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1H4zi45oKTTPTI1zvvfVs-20FprcTMBdVzn5aAHsX5_E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1H4zi45oKTTPTI1zvvfVs-20FprcTMBdVzn5aAHsX5_E/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "order_number": "={{ $item(0).$node[\"Edit Fields\"].json.order_number }}",
+            "product_code ": "={{ $item(0).$node[\"Edit Fields\"].json.product_code }}",
+            "customer_number ": "={{ $item(0).$node[\"Edit Fields\"].json.customer_number }}",
+            "order_qty ": "={{ $item(0).$node[\"Edit Fields\"].json.order_qty }}",
+            "risk_level ": "={{ $item(0).$node[\"Get row(s) in sheet\"].json.risk_level }}",
+            "shortage_probability": "={{ $item(0).$node[\"Get row(s) in sheet\"].json.shortage_probability }}",
+            "recommended_action ": "={{ $item(0).$node[\"Edit Fields1\"].json.recommendedAction }}",
+            "email": "={{ $node[\"Edit Fields\"].json.customerEmail.trim() }}",
+            "timestamp": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "order_number",
+              "displayName": "order_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "product_code ",
+              "displayName": "product_code ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "customer_number ",
+              "displayName": "customer_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "order_qty ",
+              "displayName": "order_qty ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "risk_level ",
+              "displayName": "risk_level ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "shortage_probability",
+              "displayName": "shortage_probability",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recommended_action ",
+              "displayName": "recommended_action ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        -64
+      ],
+      "id": "f46a9b99-a798-4485-bbb1-4df2a4baa986",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "KqHCS41TOKr4Au5c",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "42f1a19b-8ac7-4659-9909-126c8d021749",
+              "leftValue": "={{ $json.order_number || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        336,
+        -64
+      ],
+      "id": "4dcab99c-0d17-443b-aacc-39a2cccf7d68",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7320ea2b-3ed2-490b-9416-3706a87c6eb3",
+              "name": "success",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "cda7e8bd-e4ca-4f01-9500-4c46cae88e69",
+              "name": "error",
+              "value": "Invalid order details: we couldn’t find a matching combination of orderNumber, productCode, customerNumber and orderQty in the shortage dataset. Please double-check your inputs.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        352,
+        -240
+      ],
+      "id": "80440e05-c5ed-49f6-9b54-e65941fa1efc",
+      "name": "Build Error"
+    },
+    {
+      "parameters": {
+        "sendTo": "eshmamrayed11@gmail.com",
+        "subject": "Invalid shortage-check input received",
+        "message": "=A user submitted shortage-risk data, but no matching row was found.\n\norderNumber: {{ $json.order_number }}\nproductCode: {{ $json.product_code }}\ncustomerNumber: {{ $json.customer_number }}\norderQty: {{ $json.order_qty }}\n\nPlease review the dataset or the frontend validation.\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        608,
+        -240
+      ],
+      "id": "8a168409-8fa3-485a-870f-d6ec722a54eb",
+      "name": "Send a message1",
+      "webhookId": "3a1514a8-3e8c-48ff-8285-d0e88827995d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "wjxdmxfK055RJTlJ",
+          "name": "Gmail account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Recommendation",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Recommendation": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Generate Recommendation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a7a15211-cd94-41d5-bee2-07777c8eb548",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "86cf8130fc166deac638fa9b113cad61951fd0598f25fa43c49b09518d88c566"
+  },
+  "id": "dM9iCMEBhFbwyRR2",
+  "tags": []
+}
